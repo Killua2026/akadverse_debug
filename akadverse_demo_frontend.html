@@ -1205,34 +1205,32 @@
   function openDownloadLink(url) {
     if (!url) return;
 
-    fetch(url, { mode: 'cors' })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+    const resolvedUrl = resolveActionUrl(url);
 
-        return response.blob();
-      })
-      .then((blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = '';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      })
-      .catch(() => {
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.download = '';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      });
+    try {
+      const link = document.createElement('a');
+      link.href = resolvedUrl;
+      link.rel = 'noopener noreferrer';
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (_) {
+      window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  function resolveActionUrl(url) {
+    try {
+      return new URL(url).toString();
+    } catch (_) {
+      try {
+        const orchestratorOrigin = new URL(ORCHESTRATOR_URL).origin;
+        return new URL(url, orchestratorOrigin).toString();
+      } catch (__){
+        return url;
+      }
+    }
   }
 
   /* Copy */

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models import ToolResult
 from app.router import RouterOutcome
 
 
@@ -57,7 +57,7 @@ def test_chat_slide_prompt_exposes_download_action(monkeypatch) -> None:
             tool_used="slide_generator",
             action={
                 "type": "download",
-                "url": "http://127.0.0.1:8009/slides/download/presentation.pptx",
+                "url": "/downloads/slide/presentation.pptx",
                 "label": "Download Slide Generator",
             },
         )
@@ -76,7 +76,49 @@ def test_chat_slide_prompt_exposes_download_action(monkeypatch) -> None:
         "tool_used": "slide_generator",
         "action": {
             "type": "download",
-            "url": "http://127.0.0.1:8009/slides/download/presentation.pptx",
+            "url": "/downloads/slide/presentation.pptx",
             "label": "Download Slide Generator",
         },
     }
+
+
+def test_slide_download_proxy_returns_attachment(monkeypatch) -> None:
+    async def fake_get(self, url, follow_redirects=True):
+        request = httpx.Request("GET", url)
+        return httpx.Response(
+            200,
+            content=b"pptx-bytes",
+            headers={"content-type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    client = TestClient(app)
+
+    response = client.get("/downloads/slide/presentation.pptx")
+
+    assert response.status_code == 200
+    assert response.headers["content-disposition"] == 'attachment; filename="presentation.pptx"'
+    assert response.content == b"pptx-bytes"
+
+
+def test_slide_download_proxy_returns_404_for_missing_file(monkeypatch) -> None:
+    async def fake_get(self, url, follow_redirects=True):
+        request = httpx.Request("GET", url)
+        return httpx.Response(404, request=request)
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    client = TestClient(app)
+
+    response = client.get("/downloads/slide/missing.pptx")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File not found or expired"}
+
+
+def test_slide_download_proxy_rejects_invalid_filename() -> None:
+    client = TestClient(app)
+    response = client.get("/downloads/slide/../../etc/passwd")
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid filename"}

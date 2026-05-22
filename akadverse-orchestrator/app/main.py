@@ -5,12 +5,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from .composer import ResponseComposer
 from .config import OrchestratorSettings, load_settings
@@ -69,6 +73,29 @@ def _system_prompt_from_context(context: dict[str, Any]) -> str:
     for key, value in context.items():
         lines.append(f"{key}: {value}")
     return "\n".join(lines)
+
+
+def _safe_slide_filename(filename: str) -> str:
+    safe_filename = filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    if safe_filename != filename or not safe_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+\.(pptx|json)", safe_filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    return safe_filename
+
+
+def _slide_download_url(filename: str) -> str:
+    try:
+        slide_tool = tool_registry.get("slide_generator")
+    except KeyError as exc:
+        raise HTTPException(status_code=503, detail="Slide download is not available") from exc
+
+    endpoint = str(slide_tool.endpoint or "").strip()
+    parsed = urlparse(endpoint)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=503, detail="Slide download is not available")
+
+    return f"{parsed.scheme}://{parsed.netloc}/slides/download/{filename}"
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -176,3 +203,32 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
     )
 
     return response_payload
+
+
+@app.get("/downloads/slide/{filename}")
+async def download_slide(filename: str) -> Response:
+    safe_filename = _safe_slide_filename(filename)
+    upstream_url = _slide_download_url(safe_filename)
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+            upstream = await client.get(upstream_url, follow_redirects=True)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="Slide download service is unavailable") from exc
+
+    if upstream.status_code == 404:
+        raise HTTPException(status_code=404, detail="File not found or expired")
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="Slide download failed")
+
+    media_type = upstream.headers.get(
+        "content-type",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+    content_disposition = upstream.headers.get("content-disposition") or f'attachment; filename="{safe_filename}"'
+
+    return Response(
+        content=upstream.content,
+        media_type=media_type,
+        headers={"Content-Disposition": content_disposition},
+    )

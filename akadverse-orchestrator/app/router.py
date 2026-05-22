@@ -5,9 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import posixpath
 import re
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 from typing import Any, cast
 
 from google import genai
@@ -327,7 +328,7 @@ class Router:
             if isinstance(action_url, str) and action_url.strip():
                 payload["action"] = {
                     "type": "download",
-                    "url": action_url.strip(),
+                    "url": self._proxy_action_url(action_url.strip(), result.tool_name),
                     "label": self._action_label(result.tool_name),
                 }
 
@@ -357,6 +358,31 @@ class Router:
 
         return urljoin(str(tool.endpoint), action_url)
 
+    def _extract_download_filename(self, action_url: str) -> str | None:
+        if not action_url:
+            return None
+
+        parsed = urlparse(action_url)
+        raw_path = parsed.path or action_url
+        filename = posixpath.basename(unquote(raw_path))
+        if not filename:
+            return None
+
+        safe_pattern = r"^[A-Za-z0-9._-]+\.(pptx|json)$"
+        if not re.match(safe_pattern, filename):
+            return None
+        return filename
+
+    def _proxy_action_url(self, action_url: str, tool_name: str) -> str:
+        resolved_url = self._resolve_action_url(action_url, tool_name)
+        if tool_name != "slide_generator":
+            return resolved_url
+
+        filename = self._extract_download_filename(resolved_url)
+        if not filename:
+            return resolved_url
+        return f"/downloads/slide/{filename}"
+
     def _tool_result_action(self, result: ToolResult) -> dict[str, Any] | None:
         try:
             parsed = json.loads(result.content)
@@ -370,7 +396,7 @@ class Router:
         if not isinstance(action_url, str) or not action_url.strip():
             return None
 
-        resolved_url = self._resolve_action_url(action_url.strip(), result.tool_name)
+        resolved_url = self._proxy_action_url(action_url.strip(), result.tool_name)
 
         return {
             "type": "download",

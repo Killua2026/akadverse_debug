@@ -412,6 +412,8 @@ INFO:     127.0.0.1:xxxxx - "POST /slides/from-image HTTP/1.1" 200 OK
 
 ### 5. `GET /slides/download/{filename}`
 
+> In integrated AkadVerse deployments, browser download actions are served through the orchestrator proxy (`/downloads/slide/{filename}`). This endpoint remains the downstream service endpoint used by the orchestrator.
+
 **What it does:**
 Streams a previously generated file by exact filename from the `generated_slides` directory.
 
