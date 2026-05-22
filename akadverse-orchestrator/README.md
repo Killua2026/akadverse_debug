@@ -71,7 +71,7 @@ Download-style response example:
   "tool_used": "slide_generator",
   "action": {
     "type": "download",
-    "url": "http://127.0.0.1:8009/slides/download/presentation.pptx",
+    "url": "/downloads/slide/presentation.pptx",
     "label": "Download Slide Generator"
   }
 }
@@ -83,6 +83,12 @@ Failure behavior:
 - If Gemini model calls fail, router tries fallback models.
 - If all model attempts fail, a user-safe fallback message is returned.
 - If tool invocation fails, failure is handled gracefully and returned to the model loop.
+
+### Download proxy behavior
+
+- Browser-facing download actions are now orchestrator-owned URLs (`/downloads/slide/{filename}`).
+- The orchestrator validates filenames and proxies bytes from the configured slide generator endpoint.
+- Direct tool-host URLs (for example `localhost:8009`) are not exposed to the browser.
 
 ### GET /health
 

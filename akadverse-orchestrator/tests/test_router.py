@@ -221,7 +221,7 @@ def test_tool_action_url_is_exposed_in_route_result() -> None:
     assert outcome.reply == "Your slide deck is ready. Click the download button below."
     assert outcome.action == {
         "type": "download",
-        "url": "http://localhost:8009/slides/download/presentation.pptx",
+        "url": "/downloads/slide/presentation.pptx",
         "label": "Download Slide Generator",
     }
     assert len(fake_client.models.calls) == 1

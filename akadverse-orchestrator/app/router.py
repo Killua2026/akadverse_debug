@@ -14,6 +14,7 @@ from google import genai
 from google.genai import types
 
 from .config import OrchestratorSettings
+from .downloads import extract_slide_filename
 from .models import Message, RouteResult, ToolCall, ToolResult
 from .tools import ToolInvoker, ToolRegistry
 
@@ -327,7 +328,7 @@ class Router:
             if isinstance(action_url, str) and action_url.strip():
                 payload["action"] = {
                     "type": "download",
-                    "url": action_url.strip(),
+                    "url": self._proxy_action_url(action_url.strip(), result.tool_name),
                     "label": self._action_label(result.tool_name),
                 }
 
@@ -357,6 +358,19 @@ class Router:
 
         return urljoin(str(tool.endpoint), action_url)
 
+    def _extract_download_filename(self, action_url: str) -> str | None:
+        return extract_slide_filename(action_url)
+
+    def _proxy_action_url(self, action_url: str, tool_name: str) -> str:
+        resolved_url = self._resolve_action_url(action_url, tool_name)
+        if tool_name != "slide_generator":
+            return resolved_url
+
+        filename = self._extract_download_filename(resolved_url)
+        if not filename:
+            return resolved_url
+        return f"/downloads/slide/{filename}"
+
     def _tool_result_action(self, result: ToolResult) -> dict[str, Any] | None:
         try:
             parsed = json.loads(result.content)
@@ -370,7 +384,7 @@ class Router:
         if not isinstance(action_url, str) or not action_url.strip():
             return None
 
-        resolved_url = self._resolve_action_url(action_url.strip(), result.tool_name)
+        resolved_url = self._proxy_action_url(action_url.strip(), result.tool_name)
 
         return {
             "type": "download",
