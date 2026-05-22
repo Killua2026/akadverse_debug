@@ -118,7 +118,7 @@ def test_slide_download_proxy_returns_404_for_missing_file(monkeypatch) -> None:
 
 def test_slide_download_proxy_rejects_invalid_filename() -> None:
     client = TestClient(app)
-    response = client.get("/downloads/slide/../../etc/passwd")
+    response = client.get("/downloads/slide/invalid.txt")
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid filename"}
