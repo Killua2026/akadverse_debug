@@ -1,0 +1,326 @@
+llm:
+  provider: gemini
+  model_name: gemini-2.0-flash-lite
+  model_fallbacks:
+    - gemini-2.5-flash
+    - gemini-2.0-flash
+    - gemini-2.0-flash-lite
+
+stem:
+  backend: memory
+
+session:
+  max_messages: 20
+
+tools:
+  - name: quiz_generator
+    description: Generate quizzes from a topic and optional difficulty settings.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        num_questions:
+          type: integer
+          minimum: 1
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+      required: [topic, num_questions]
+      additionalProperties: false
+    endpoint: http://localhost:8016/generate-quiz
+    timeout_seconds: 90
+    retry_count: 2
+
+  - name: slide_generator
+    description: Generate slides from plain text by providing content, and optionally subject, num_slides, and user_id. Use content for the source text, subject for the deck title or topic hint, num_slides for the requested slide count, and user_id for caller metadata.
+    parameters:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Plain text content to convert into slides.
+        subject:
+          type: string
+          description: Optional subject or title hint for the slide deck.
+        num_slides:
+          type: integer
+          minimum: 0
+          description: Optional requested number of slides. Use 0 to let the service auto-estimate.
+        user_id:
+          type: string
+          description: Optional caller identifier for tracing.
+      required: [content]
+      additionalProperties: false
+    endpoint: http://localhost:8009/slides/from-text
+    request_format: form
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: notes_creator
+    description: Create structured lecture notes from a topic or source material.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        source_text:
+          type: string
+        tone:
+          type: string
+      required: [topic]
+      additionalProperties: false
+    endpoint: http://localhost:8008/notes/from-text
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: concept_explainer
+    description: Explain a concept in a student-friendly way.
+    parameters:
+      type: object
+      properties:
+        concept:
+          type: string
+        level:
+          type: string
+        examples:
+          type: integer
+          minimum: 0
+      required: [concept]
+      additionalProperties: false
+    endpoint: http://localhost:8010/explain-concept
+    timeout_seconds: 90
+    retry_count: 2
+
+  - name: assignment_generator
+    description: Generate assignments based on a topic and difficulty level.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        assignment_type:
+          type: string
+        num_questions:
+          type: integer
+          minimum: 1
+      required: [topic]
+      additionalProperties: false
+    endpoint: http://localhost:8012/generate-assignment
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: sample_questions_generator
+    description: Generate sample exam questions for a topic.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+        format:
+          type: string
+      required: [topic]
+      additionalProperties: false
+    endpoint: http://localhost:8013/generate-questions
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: practice_questions_generator
+    description: Generate practice questions and answer prompts for a topic.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+        difficulty:
+          type: string
+      required: [topic]
+      additionalProperties: false
+    endpoint: http://localhost:8017/generate-practice
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: note_to_audio
+    description: Convert notes or text into audio narration.
+    parameters:
+      type: object
+      properties:
+        text:
+          type: string
+        voice:
+          type: string
+        format:
+          type: string
+      required: [text]
+      additionalProperties: false
+    endpoint: http://localhost:8014/convert
+    timeout_seconds: 180
+    retry_count: 2
+
+  - name: note_to_animations
+    description: Convert notes into animated learning content.
+    parameters:
+      type: object
+      properties:
+        text:
+          type: string
+        style:
+          type: string
+        language:
+          type: string
+      required: [text]
+      additionalProperties: false
+    endpoint: http://localhost:8015/animations/generate
+    timeout_seconds: 180
+    retry_count: 2
+
+  - name: resource_puller
+    description: Pull educational resources for a topic or query.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+        resource_type:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+      required: [query]
+      additionalProperties: false
+    endpoint: http://localhost:8011/discover-resources
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: youtube_recommender
+    description: Recommend YouTube learning videos for a topic.
+    parameters:
+      type: object
+      properties:
+        topic:
+          type: string
+        level:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+      required: [topic]
+      additionalProperties: false
+    endpoint: http://localhost:8003/recommend
+    timeout_seconds: 90
+    retry_count: 2
+
+  - name: marketplace_api
+    description: Access the marketplace service for content or products.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+        category:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+      required: [query]
+      additionalProperties: false
+    endpoint: http://localhost:8004/webhook/event
+    timeout_seconds: 90
+    retry_count: 2
+
+  - name: google_workspace
+    description: Interact with Google Workspace services for classroom workflows.
+    parameters:
+      type: object
+      properties:
+        action:
+          type: string
+        target:
+          type: string
+        payload:
+          type: object
+      required: [action]
+      additionalProperties: false
+    endpoint: http://localhost:8005/chat/contextual
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: resource_tracker
+    description: Track educational resources and their status.
+    parameters:
+      type: object
+      properties:
+        resource_id:
+          type: string
+        action:
+          type: string
+        notes:
+          type: string
+      required: [resource_id]
+      additionalProperties: false
+    endpoint: http://localhost:8006/redirect
+    timeout_seconds: 90
+    retry_count: 2
+
+  - name: schedule_manager
+    description: Create or update schedules for classes, tasks, and events.
+    parameters:
+      type: object
+      properties:
+        event_name:
+          type: string
+        start_time:
+          type: string
+        end_time:
+          type: string
+        timezone:
+          type: string
+      required: [event_name, start_time]
+      additionalProperties: false
+    endpoint: http://localhost:8007/nlp/create-event
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: attendance_ai
+    description: Process attendance data and generate attendance insights.
+    parameters:
+      type: object
+      properties:
+        class_id:
+          type: string
+        date:
+          type: string
+        attendance_records:
+          type: array
+          items:
+            type: object
+      required: [class_id, date]
+      additionalProperties: false
+    endpoint: http://localhost:8018/attendance/biometric
+    timeout_seconds: 120
+    retry_count: 2
+
+  - name: grade_upload_ai
+    description: Upload grades and generate grade processing output.
+    parameters:
+      type: object
+      properties:
+        class_id:
+          type: string
+        assessment_name:
+          type: string
+        grades:
+          type: array
+          items:
+            type: object
+      required: [class_id, assessment_name, grades]
+      additionalProperties: false
+    endpoint: http://localhost:8019/grades/scan
+    timeout_seconds: 120
+    retry_count: 2

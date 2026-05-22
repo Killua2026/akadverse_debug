@@ -1,0 +1,69 @@
+# Environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Database and persistence
+*.db
+faiss_platform_index/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and runtime artifacts
+*.log
+interaction_logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+Environments
+
+.env
+venv/
+env/
+pycache/
+*.pyc
+
+Database and Persistence
+
+*.db
+faiss_platform_index/
+.ipynb_checkpoints/
+
+User Data & Logs
+
+*.log
+interaction_logs/
+
+IDE
+
+.vscode/
+.idea/
+
+.pytest_cache/
