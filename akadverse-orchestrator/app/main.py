@@ -5,11 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import re
 import time
 import uuid
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -18,6 +17,7 @@ from fastapi.responses import Response
 
 from .composer import ResponseComposer
 from .config import OrchestratorSettings, load_settings
+from .downloads import validate_slide_filename
 from .models import ChatRequest, HealthResponse, Message, RouteResult
 from .router import Router
 from .session import InMemorySessionManager, SessionManager
@@ -76,10 +76,8 @@ def _system_prompt_from_context(context: dict[str, Any]) -> str:
 
 
 def _safe_slide_filename(filename: str) -> str:
-    safe_filename = filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
-    if safe_filename != filename or not safe_filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    if not re.fullmatch(r"[A-Za-z0-9._-]+\.(pptx|json)", safe_filename):
+    safe_filename = validate_slide_filename(filename)
+    if safe_filename is None:
         raise HTTPException(status_code=400, detail="Invalid filename")
     return safe_filename
 
@@ -225,7 +223,7 @@ async def download_slide(filename: str) -> Response:
         "content-type",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     )
-    content_disposition = upstream.headers.get("content-disposition") or f'attachment; filename="{safe_filename}"'
+    content_disposition = f"attachment; filename*=UTF-8''{quote(safe_filename)}"
 
     return Response(
         content=upstream.content,

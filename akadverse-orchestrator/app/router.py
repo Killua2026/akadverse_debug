@@ -5,16 +5,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import posixpath
 import re
 import time
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 from typing import Any, cast
 
 from google import genai
 from google.genai import types
 
 from .config import OrchestratorSettings
+from .downloads import extract_slide_filename
 from .models import Message, RouteResult, ToolCall, ToolResult
 from .tools import ToolInvoker, ToolRegistry
 
@@ -359,19 +359,7 @@ class Router:
         return urljoin(str(tool.endpoint), action_url)
 
     def _extract_download_filename(self, action_url: str) -> str | None:
-        if not action_url:
-            return None
-
-        parsed = urlparse(action_url)
-        raw_path = parsed.path or action_url
-        filename = posixpath.basename(unquote(raw_path))
-        if not filename:
-            return None
-
-        safe_pattern = r"^[A-Za-z0-9._-]+\.(pptx|json)$"
-        if not re.match(safe_pattern, filename):
-            return None
-        return filename
+        return extract_slide_filename(action_url)
 
     def _proxy_action_url(self, action_url: str, tool_name: str) -> str:
         resolved_url = self._resolve_action_url(action_url, tool_name)

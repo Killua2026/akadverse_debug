@@ -1227,7 +1227,7 @@
       try {
         const orchestratorOrigin = new URL(ORCHESTRATOR_URL).origin;
         return new URL(url, orchestratorOrigin).toString();
-      } catch (__){
+      } catch (_) {
         return url;
       }
     }

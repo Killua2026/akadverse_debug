@@ -98,7 +98,7 @@ def test_slide_download_proxy_returns_attachment(monkeypatch) -> None:
     response = client.get("/downloads/slide/presentation.pptx")
 
     assert response.status_code == 200
-    assert response.headers["content-disposition"] == 'attachment; filename="presentation.pptx"'
+    assert response.headers["content-disposition"] == "attachment; filename*=UTF-8''presentation.pptx"
     assert response.content == b"pptx-bytes"
 
 
